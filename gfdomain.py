@@ -51,12 +51,22 @@ def create_domain(name):
         rs = domain_status()
     return rs;
 
+def delete_domain(name):
+    rs = asadmin(["delete-domain", name])
+    return rs;
+
 def exit_with_status(module, rs):
     name = module.params["name"]
     if rs["ok"] and name in rs["domains"].keys():
         module.exit_json(changed=True, status=rs["domains"][name])
     elif rs["ok"]:
-        module.fail_json(msg="No domain named '" + name + "' exists.")
+        module.fail_json(msg="Domain '" + name + "' not created.")
+    else:
+        module.fail_json(msg=rs.stdout)
+
+def exit_without_status(module, rs):
+    if rs["ok"]:
+        module.exit_json(changed=True)
     else:
         module.fail_json(msg=rs.stdout)
 
@@ -77,11 +87,21 @@ def main():
     as_pwdfile = create_password_file(module.params["password"])
 
     name = module.params["name"]
+    state = module.params["state"]
     rs = domain_status()
-    if rs["ok"] and name in rs["domains"].keys():
-        module.exit_json(changed=False, status=rs["domains"][name])
-    elif rs["ok"]:
-        exit_with_status(module, create_domain(name))
+    domain_present = name in rs["domains"].keys()
+
+    if rs["ok"]:
+        if state == "present":
+            if domain_present:
+                module.exit_json(changed=False, status=rs["domains"][name])
+            else:
+                exit_with_status(module, create_domain(name))
+        elif state == "absent":
+            if not domain_present:
+                module.exit_json(changed=False)
+            else:
+                exit_without_status(module, delete_domain(name))
     else:
         module.fail_json(msg=rs.stdout)
 
