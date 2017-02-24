@@ -2,6 +2,7 @@
 import json
 import subprocess
 import tempfile
+import os
 from ansible.module_utils.basic import AnsibleModule
 
 as_user = ""
@@ -83,27 +84,30 @@ def main():
     global as_user
     global as_pwdfile
 
-    as_user = module.params["user"]
-    as_pwdfile = create_password_file(module.params["password"])
+    try:
+        as_user = module.params["user"]
+        as_pwdfile = create_password_file(module.params["password"])
 
-    name = module.params["name"]
-    state = module.params["state"]
-    rs = domain_status()
-    domain_present = name in rs["domains"].keys()
+        name = module.params["name"]
+        state = module.params["state"]
+        rs = domain_status()
+        domain_present = name in rs["domains"].keys()
 
-    if rs["ok"]:
-        if state == "present":
-            if domain_present:
-                module.exit_json(changed=False, status=rs["domains"][name])
-            else:
-                exit_with_status(module, create_domain(name))
-        elif state == "absent":
-            if not domain_present:
-                module.exit_json(changed=False)
-            else:
-                exit_without_status(module, delete_domain(name))
-    else:
-        module.fail_json(msg=rs.stdout)
+        if rs["ok"]:
+            if state == "present":
+                if domain_present:
+                    module.exit_json(changed=False, status=rs["domains"][name])
+                else:
+                    exit_with_status(module, create_domain(name))
+            elif state == "absent":
+                if not domain_present:
+                    module.exit_json(changed=False)
+                else:
+                    exit_without_status(module, delete_domain(name))
+        else:
+            module.fail_json(msg=rs.stdout)
+    finally:
+        os.remove(as_pwdfile)
 
 if __name__ == '__main__':
     main()
