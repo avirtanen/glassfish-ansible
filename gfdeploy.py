@@ -3,6 +3,7 @@ import json
 import subprocess
 import tempfile
 import os
+import os.path
 import re
 from ansible.module_utils.basic import AnsibleModule
 
@@ -10,13 +11,14 @@ as_user = ""
 as_pwdfile = ""
 
 def asadmin(asadmin_args):
-    args = ["/home/aleksi/servers/payara41/bin/asadmin",
+    args = ["/opt/payara41/bin/asadmin",
             "--user", as_user,
             "--passwordfile", as_pwdfile] + asadmin_args;
 
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
+    p = subprocess.Popen(args, stdout=subprocess.PIPE)
+    out_b, err = p.communicate()
 
+    out = out_b.decode()
     lines = out.split("\n")
     if not lines[-1]:
         del lines[-1]
@@ -27,10 +29,14 @@ def asadmin(asadmin_args):
     return {"ok": ok, "stdout": out, "stdout_lines": lines, "error": err}
 
 def create_password_file(password):
-    file = tempfile.NamedTemporaryFile(delete=False);
-    file.write("AS_ADMIN_PASSWORD="+password)
+    file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    file.write('AS_ADMIN_PASSWORD='+password)
     file.close()
     return file.name
+
+def delete_password_file(file):
+    if os.path.exists(file):
+        os.remove(as_pwdfile)
 
 def parse_applications_status(stdout):
     applications = {}
@@ -140,7 +146,7 @@ def main():
         else:
             module.fail_json(msg=rs["stdout"], error=rs["error"])
     finally:
-        os.remove(as_pwdfile)
+        delete_password_file(as_pwdfile)
 
 if __name__ == '__main__':
     main()

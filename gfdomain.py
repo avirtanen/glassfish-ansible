@@ -9,13 +9,14 @@ as_user = ""
 as_pwdfile = ""
 
 def asadmin(asadmin_args):
-    args = ["/home/aleksi/servers/payara41/bin/asadmin",
+    args = ["/opt/payara41/bin/asadmin",
             "--user", as_user,
             "--passwordfile", as_pwdfile] + asadmin_args;
 
     p = subprocess.Popen(args, stdout=subprocess.PIPE)
-    out, err = p.communicate()
+    out_b, err = p.communicate()
 
+    out = out_b.decode()
     lines = out.split("\n")
     if not lines[-1]:
         del lines[-1]
@@ -23,13 +24,17 @@ def asadmin(asadmin_args):
     status_line = lines[-1]
     ok = "executed successfully" in status_line
 
-    return {"ok": ok, "stdout": out, "stdout_lines": lines}
+    return {"ok": ok, "stdout": out, "stdout_lines": lines, "error": err}
 
 def create_password_file(password):
-    file = tempfile.NamedTemporaryFile(delete=False);
-    file.write("AS_ADMIN_PASSWORD="+password)
+    file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    file.write('AS_ADMIN_PASSWORD='+password)
     file.close()
     return file.name
+
+def delete_password_file(file):
+    if os.path.exists(file):
+        os.remove(as_pwdfile)
 
 def parse_domain_status(stdout):
     domains = {}
@@ -63,13 +68,13 @@ def exit_with_status(module, rs):
     elif rs["ok"]:
         module.fail_json(msg="Domain '" + name + "' not created.")
     else:
-        module.fail_json(msg=rs.stdout)
+        module.fail_json(msg=rs["stdout"])
 
 def exit_without_status(module, rs):
     if rs["ok"]:
         module.exit_json(changed=True)
     else:
-        module.fail_json(msg=rs.stdout)
+        module.fail_json(msg=rs["stdout"])
 
 def main():
     module = AnsibleModule(
@@ -107,7 +112,7 @@ def main():
         else:
             module.fail_json(msg=rs.stdout)
     finally:
-        os.remove(as_pwdfile)
+        delete_password_file(as_pwdfile)
 
 if __name__ == '__main__':
     main()
