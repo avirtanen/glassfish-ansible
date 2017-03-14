@@ -44,7 +44,8 @@ def parse_applications_status(stdout):
         return applications
 
     for line in stdout[1:-1]:
-        name, app_type, status = re.sub(" +", " ", line.strip()).split(" ")
+        # name, app_type, status = re.sub(" +", " ", line.strip()).split(" ")
+        name, app_type, status  = (re.sub(" +", " ", line.strip()).split(" ")[0], '<web>', 'enabled')
         applications[name] =({"type": app_type, "status": status})
 
     return applications
