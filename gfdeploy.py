@@ -65,19 +65,21 @@ def application_status(name):
     else:
         return rs
 
-def deploy_application(name, war):
+def deploy_application(name, war, enabled):
     rs = asadmin([
             "deploy",
             "--name", name,
+            "--enabled", str(enabled),
             war])
     if rs["ok"]:
         rs = application_status(name)
     return rs;
 
-def redeploy_application(name, war):
+def redeploy_application(name, war, enabled):
     rs = asadmin([
             "redeploy",
             "--name", name,
+            "--enabled", str(enabled),
             war])
     if rs["ok"]:
         rs = application_status(name)
@@ -112,6 +114,7 @@ def main():
             war       = dict(),
             target    = dict(),
             redeploy  = dict(default=False),
+            enabled   = dict(default=True),
             user      = dict(default='admin'),
             password  = dict(default='', no_log=True)
             )
@@ -128,6 +131,7 @@ def main():
         name = module.params["name"]
         war = module.params["war"]
         redeploy = module.params["redeploy"] == "True"
+        enabled = module.params["enabled"] == "True"
 
         rs = application_status(name)
         if rs["ok"]:
@@ -136,9 +140,9 @@ def main():
                 if app_present and not redeploy:
                     module.exit_json(changed=False, status=rs[name])
                 elif app_present:
-                    exit_with_status(module, redeploy_application(name, war))
+                    exit_with_status(module, redeploy_application(name, war, enabled))
                 else:
-                    exit_with_status(module, deploy_application(name, war))
+                    exit_with_status(module, deploy_application(name, war, enabled))
             elif state == "absent":
                 if not app_present:
                     module.exit_json(changed=False)
